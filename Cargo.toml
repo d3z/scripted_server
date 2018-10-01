@@ -1,0 +1,8 @@
+[package]
+name = "scripted_server"
+version = "0.1.0"
+authors = ["Gareth Fleming <me@d3z.me>"]
+edition = "2018"
+
+[dependencies]
+structopt = "0.2"
