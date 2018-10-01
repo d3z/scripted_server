@@ -1,0 +1,11 @@
+name: Simple # for diagnosis. required
+repeat: true # should the server loop around to the first step. optional, default: false.
+path: /test # the path that all steps listen for by default. required.
+steps:
+  - name: OK # for diagnosis. required.
+    code: 200 # HTTP response code. required.
+    content: "ok" # this could be content or path to content file. optional, default: ''.
+    content-type: "text/plain" # optional, default "text/plain"
+    times: 2 # how many times should this step be used. optional, default: 1.
+  - name: Cannot find file.
+    code: 404
