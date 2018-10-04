@@ -59,8 +59,8 @@ impl Script {
         }
     }
 
-    fn step_name(&self) -> &String {
-        &self.steps[self.current_step].name
+    fn step_name(&self) -> String {
+        format!("{}: {}", self.current_step, self.steps[self.current_step].name)
     }
 
     fn step_path(&self) -> &String {
@@ -75,7 +75,7 @@ impl Script {
         return format!("HTTP/1.1 {} OK\r\n\r\n{}", step.code, step.content);
     }
 
-    fn _next_step(&mut self) {
+    fn next_step(&mut self) {
         if self.current_step + 1 == self.steps.len() {
             self.current_step = 0;
         } else {
@@ -136,28 +136,28 @@ fn main() {
     let mut script_contents = String::new();
     let mut script_file = File::open(opt.script_file).expect("Could not open script file");
     script_file.read_to_string(&mut script_contents).expect("Could not read script file");
-    let script = parse_script(&script_contents);
+    let mut script = parse_script(&script_contents);
     println!("Listening on port {}, running script '{}'", opt.port, script.name);
-    serve(opt.port, script);
+    serve(opt.port, &mut script);
 }
 
-fn serve(port: i32, script: Script) {
+fn serve(port: i32, script: &mut Script) {
     let url = format!("127.0.0.1:{}", port);
     let listener = TcpListener::bind(url).unwrap();
     for stream in listener.incoming() {
         let stream = stream.unwrap();
-        handle_connection(stream, &script);
+        handle_connection(stream, script);
     }
 }
 
-fn handle_connection(mut stream: TcpStream, script: &Script) {
+fn handle_connection(mut stream: TcpStream, script: &mut Script) {
     let mut buf = [0; 512];
     stream.read(&mut buf).unwrap();
     if buf.starts_with(format!("GET {} HTTP/1.1\r\n", script.step_path()).as_bytes()) {
         println!("Handling request with step '{}'", script.step_name());
         let response = script.step_response();
         stream.write(response.as_bytes()).unwrap();
-        //script.next_step();
+        script.next_step();
     } else {
         stream.write(format!("HTTP/1.1 400 BAD_REQUEST\r\n\r\nUnexpected request").as_bytes()).unwrap();
     }
