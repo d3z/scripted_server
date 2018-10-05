@@ -1,5 +1,5 @@
 name: Simple # for diagnosis. required
-repeat: true # should the server loop around to the first step. optional, default: false.
+repeat: false # should the server loop around to the first step. optional, default: false.
 path: /test # the path that all steps listen for by default. required.
 steps:
   - name: OK # for diagnosis. required.
