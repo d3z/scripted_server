@@ -23,6 +23,7 @@ struct Opt {
 struct Step {
     name: String,
     path: String,
+    method: String,
     code: i64,
     content: String,
     content_type: String
@@ -33,8 +34,9 @@ impl Step {
         let content = get_content(parse_str_value(step_definition, "content", "").as_str()); 
         Step {
             name: parse_str_value(step_definition, "name", ""),
-            code: parse_int_value(step_definition, "code", 200),
             path: parse_str_value(step_definition, "path", ""),
+            method: parse_str_value(step_definition, "method", "GET").to_uppercase(),
+            code: parse_int_value(step_definition, "code", 200),
             content: content,
             content_type: parse_str_value(step_definition, "content_type", "text/plain"),
         }
@@ -65,6 +67,10 @@ impl Script {
         format!("{}: {}", self.current_step, self.steps[self.current_step].name)
     }
 
+    fn step_method(&self) -> String {
+        format!("{}", self.steps[self.current_step].method)
+    }
+
     fn step_path(&self) -> &String {
         if self.steps[self.current_step].path == "" {
             return &self.path
@@ -86,7 +92,6 @@ impl Script {
         } else {
             self.current_step += 1;
         }
-
         return Left(self.current_step);
     }
 }
@@ -165,16 +170,18 @@ fn serve(port: i32, script: &mut Script) {
 
 fn handle_connection(mut stream: TcpStream, script: &mut Script) -> Either<usize, &str> {
     let mut buf = [0; 512];
+    let result: Either<usize, &str>;
     stream.read(&mut buf).unwrap();
-    if buf.starts_with(format!("GET {} HTTP/1.1\r\n", script.step_path()).as_bytes()) {
+    if buf.starts_with(format!("{} {} HTTP/1.1\r\n", script.step_method(), script.step_path()).as_bytes()) {
         println!("Handling request with step '{}'", script.step_name());
         let response = script.step_response();
         stream.write(response.as_bytes()).unwrap();
         stream.flush().unwrap();
-        return script.next_step();
+        result = script.next_step();
     } else {
-        stream.write(format!("HTTP/1.1 400 BAD_REQUEST\r\n\r\nUnexpected request").as_bytes()).unwrap();
+        stream.write(format!("HTTP/1.1 400 BAD_REQUEST\r\n\r\nExpected {} {}", script.step_method(), script.step_path()).as_bytes()).unwrap();
         stream.flush().unwrap();
-        return Left(0);
+        result = Left(script.current_step);
     }
+    return result;
 }
