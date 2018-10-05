@@ -1,6 +1,8 @@
 extern crate structopt;
 extern crate yaml_rust;
+extern crate either;
 
+use either::*;
 use std::fs::File;
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream};
@@ -75,16 +77,17 @@ impl Script {
         return format!("HTTP/1.1 {} OK\r\n\r\n{}", step.code, step.content);
     }
 
-    fn next_step(&mut self) -> bool {
+    fn next_step(&mut self) -> Either<usize, &str> {
         if self.current_step + 1 == self.steps.len() {
             if !self.repeat {
-                return false
+                return Right("End of non-repeating script");
             }
             self.current_step = 0;
         } else {
             self.current_step += 1;
         }
-        return true;
+
+        return Left(self.current_step);
     }
 }
 
@@ -150,14 +153,17 @@ fn serve(port: i32, script: &mut Script) {
     let listener = TcpListener::bind(url).unwrap();
     for stream in listener.incoming() {
         let stream = stream.unwrap();
-        if !handle_connection(stream, script) {
-            println!("End of non-repeating script");
-            break;
+        match handle_connection(stream, script) {
+            Left(_) => continue,
+            Right(msg) => { 
+                println!("{}", msg);
+                break;
+            }
         }
     }
 }
 
-fn handle_connection(mut stream: TcpStream, script: &mut Script) -> bool {
+fn handle_connection(mut stream: TcpStream, script: &mut Script) -> Either<usize, &str> {
     let mut buf = [0; 512];
     stream.read(&mut buf).unwrap();
     if buf.starts_with(format!("GET {} HTTP/1.1\r\n", script.step_path()).as_bytes()) {
@@ -169,6 +175,6 @@ fn handle_connection(mut stream: TcpStream, script: &mut Script) -> bool {
     } else {
         stream.write(format!("HTTP/1.1 400 BAD_REQUEST\r\n\r\nUnexpected request").as_bytes()).unwrap();
         stream.flush().unwrap();
-        return true
+        return Left(0);
     }
 }

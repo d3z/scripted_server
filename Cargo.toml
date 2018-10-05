@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 structopt = "0.2"
 yaml-rust = "0.3.5"
+either = "1.5.0"
