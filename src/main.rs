@@ -75,16 +75,16 @@ impl Script {
         return format!("HTTP/1.1 {} OK\r\n\r\n{}", step.code, step.content);
     }
 
-    fn next_step(&mut self) -> Result<usize, &str> {
+    fn next_step(&mut self) -> bool {
         if self.current_step + 1 == self.steps.len() {
             if !self.repeat {
-                return Err("End of non-repeating script")
+                return false
             }
             self.current_step = 0;
         } else {
             self.current_step += 1;
         }
-        return Ok(self.current_step);
+        return true;
     }
 }
 
@@ -150,17 +150,14 @@ fn serve(port: i32, script: &mut Script) {
     let listener = TcpListener::bind(url).unwrap();
     for stream in listener.incoming() {
         let stream = stream.unwrap();
-        match handle_connection(stream, script) {
-            Ok(_) => continue,
-            Err(msg) => {
-                println!("{}", msg);
-                break;
-            }
+        if !handle_connection(stream, script) {
+            println!("End of non-repeating script");
+            break;
         }
     }
 }
 
-fn handle_connection(mut stream: TcpStream, script: &mut Script) -> Result<usize, &str> {
+fn handle_connection(mut stream: TcpStream, script: &mut Script) -> bool {
     let mut buf = [0; 512];
     stream.read(&mut buf).unwrap();
     if buf.starts_with(format!("GET {} HTTP/1.1\r\n", script.step_path()).as_bytes()) {
@@ -172,6 +169,6 @@ fn handle_connection(mut stream: TcpStream, script: &mut Script) -> Result<usize
     } else {
         stream.write(format!("HTTP/1.1 400 BAD_REQUEST\r\n\r\nUnexpected request").as_bytes()).unwrap();
         stream.flush().unwrap();
-        return Ok(0)
+        return true
     }
 }
