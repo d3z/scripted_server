@@ -52,6 +52,16 @@ struct Script {
     steps: Vec<Step>
 }
 
+fn msg_for_code<'a>(code: i64) -> &'a str {
+    match code {
+        200 => "Ok",
+        201 => "Created",
+        400 => "Bad Request",
+        404 => "Not Found",
+        _ => ""
+    }
+}
+
 impl Script {
     fn new(script: &Yaml) -> Self {
         Script {
@@ -80,7 +90,7 @@ impl Script {
 
     fn step_response(&self) -> String {
         let step = &self.steps[self.current_step];
-        return format!("HTTP/1.1 {} OK\r\n\r\n{}", step.code, step.content);
+        return format!("HTTP/1.1 {} {}\r\n\r\n{}", step.code, msg_for_code(step.code), step.content);
     }
 
     fn next_step(&mut self) -> Either<usize, &str> {
@@ -179,7 +189,7 @@ fn handle_connection(mut stream: TcpStream, script: &mut Script) -> Either<usize
         stream.flush().unwrap();
         result = script.next_step();
     } else {
-        stream.write(format!("HTTP/1.1 400 BAD_REQUEST\r\n\r\nExpected {} {}", script.step_method(), script.step_path()).as_bytes()).unwrap();
+        stream.write(format!("HTTP/1.1 400 Bad Request\r\n\r\nExpected {} {}", script.step_method(), script.step_path()).as_bytes()).unwrap();
         stream.flush().unwrap();
         result = Left(script.current_step);
     }
