@@ -7,6 +7,9 @@ steps:
     content: "ok" # this could be content or path to content file. optional, default: ''.
     content-type: "text/plain" # optional, default "text/plain"
     times: 2 # how many times should this step be used. optional, default: 1.
+  - name: OK with file
+    code: 200
+    content: response/test.html
   - name: Simple post
     method: post # defaults to get
     path: /test/new
