@@ -18,15 +18,16 @@ A script file specifies the requests and responses the server will make in order
 Here is an example script file with an explanation of how the server will use it.
 
 ```yaml
+---
 name: My first script file # used for logging
-loop: true # should the server loop over the steps or end, defaults to false
+repeat: true # should the server loop over the steps or end, defaults to false
 path: /api/contact # the path that all steps match on by default
 steps:
     - name: OK # used for logging
       code: 200 # HTTP response code returned by this step
       content: "ok" # body of reponse to return (can also be path to a file)
       content-type: "text/plain" # defaults to "text/plain"
-      repeat: 2 # how many times to use this step, defaults to 1
+      times: 2 # how many times to use this step, defaults to 1
     - name: Error # used for logging
       path: /api/contact/123 # overrides the global path
       code: 404
