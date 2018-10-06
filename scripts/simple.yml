@@ -1,15 +1,16 @@
+---
 name: Simple # for diagnosis. required
 repeat: false # should the server loop around to the first step. optional, default: false.
 path: /test # the path that all steps listen for by default. required.
 steps:
   - name: OK # for diagnosis. required.
     code: 200 # HTTP response code. required.
-    content: "ok" # this could be content or path to content file. optional, default: ''.
-    content-type: "text/plain" # optional, default "text/plain"
+    content: ok # this could be content or path to content file. optional, default: ''. 
     times: 2 # how many times should this step be used. optional, default: 1.
   - name: OK with file
     code: 200
     content: response/test.html
+    content_type: text/html # optional, default "text/plain"
   - name: Simple post
     method: post # defaults to get
     path: /test/new

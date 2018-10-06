@@ -88,9 +88,16 @@ impl Script {
         return &self.steps[self.current_step].path
     }
 
+    fn step_headers(&self) -> String {
+        let step = &self.steps[self.current_step];
+        return format!("Server: scripted_server\r\nContent-Type: {}\r\nContent-Length: {}", 
+            step.content_type, 
+            step.content.len());
+    }
+
     fn step_response(&self) -> String {
         let step = &self.steps[self.current_step];
-        return format!("HTTP/1.1 {} {}\r\n\r\n{}", step.code, msg_for_code(step.code), step.content);
+        return format!("HTTP/1.1 {} {}\r\nContent-Type: {}\r\n\r\n{}", step.code, msg_for_code(step.code), self.step_headers(), step.content);
     }
 
     fn next_step(&mut self) -> Either<usize, &str> {
