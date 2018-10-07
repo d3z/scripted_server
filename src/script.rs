@@ -57,7 +57,7 @@ impl Script {
             name: parse_str_value(script, "name", ""),
             repeat: parse_bool_value(script, "repeat", false),
             path: parse_str_value(script, "path", ""),
-            steps: parse_steps(script["steps"].as_vec().unwrap()),
+            steps: parse_steps(script["steps"].as_vec()),
             current_step: 0
         }
     }
@@ -138,13 +138,95 @@ fn parse_step(step_definition: &Yaml) -> Vec<Step> {
     return steps;
 }
 
-fn parse_steps(step_definitions: &Vec<Yaml>) -> Vec<Step> {
+fn parse_steps(step_definitions: Option<&Vec<Yaml>>) -> Vec<Step> {
     let mut steps = Vec::new();
-    step_definitions.into_iter().for_each(|step_definition| parse_step(step_definition).into_iter().for_each(|step| steps.push(step)));
+    match step_definitions {
+        Some(step_definitions) => step_definitions.into_iter().for_each(|step_definition| parse_step(step_definition).into_iter().for_each(|step| steps.push(step))),
+        None => return steps
+    }
     return steps;
 }
 
 pub fn parse_script(script_str: &str) -> Script {
     let script = &YamlLoader::load_from_str(script_str).unwrap()[0];
     return Script::new(script);
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    static SCRIPT_WITHOUT_STEPS: &'static str = "
+    name: test
+    path: /test
+    ";
+
+    static SCRIPT_WITH_ONE_STEP: &'static str = "
+    name: test
+    steps:
+        - name: step 1
+    ";
+
+    static SCRIPT_WITH_TWO_STEP_REPEATING: &'static str = "
+    name: test
+    repeat: true
+    path: /test
+    steps:
+        - name: step 1
+          code: 200
+        - name: step 2
+          code: 404
+          path: /test/again
+    ";
+
+    #[test]
+    fn should_parse_script() {
+        let script = parse_script(SCRIPT_WITHOUT_STEPS);
+        assert_eq!(script.name, "test");
+        assert_eq!(script.path, "/test");
+    }
+
+    #[test]
+    fn should_default_optional_script_fields() {
+        let script = parse_script(SCRIPT_WITHOUT_STEPS);
+        assert_eq!(script.repeat, false);
+    }
+
+    #[test]
+    fn should_parse_script_with_one_step() {
+        let script = parse_script(SCRIPT_WITH_ONE_STEP);
+        assert_eq!(script.steps.len(), 1);
+        assert_eq!(script.step_name(), "0: step 1");
+    }
+
+    #[test]
+    fn should_default_optional_step_fields() {
+        let script = parse_script(SCRIPT_WITH_ONE_STEP);
+        assert_eq!(script.step_method(), "GET");
+    }
+
+    #[test]
+    fn should_progress_to_next_step() {
+        let mut script = parse_script(SCRIPT_WITH_TWO_STEP_REPEATING);
+        assert_eq!(script.step_name(), "0: step 1");
+        script.next_step();
+        assert_eq!(script.step_name(), "1: step 2");
+    }
+
+    #[test]
+    fn should_repeat_steps_for_repeating_script() {
+        let mut script = parse_script(SCRIPT_WITH_TWO_STEP_REPEATING);
+        script.next_step();
+        script.next_step();
+        assert_eq!(script.step_name(), "0: step 1");
+    }
+
+    #[test]
+    fn should_use_script_path_when_not_defined_in_step() {
+        let script = parse_script(SCRIPT_WITH_TWO_STEP_REPEATING);
+        assert_eq!(script.step_path(), "/test"); // script path
+    }
+
+
 }
