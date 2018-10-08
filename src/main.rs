@@ -45,20 +45,27 @@ fn serve(port: i32, script: &mut script::Script) {
     }
 }
 
+static BAD_REQUEST: &'static str = "HTTP/1.1 400 Bad Request\r\n\r\n";
+
+fn bad_request(msg: &str) -> String {
+    format!("{}{}", BAD_REQUEST, msg)
+}
+
 fn handle_connection(mut stream: TcpStream, script: &mut script::Script) -> Either<usize, &str> {
     let mut buf = [0; 512];
     let result: Either<usize, &str>;
-    stream.read(&mut buf).unwrap();
+    stream.read_exact(&mut buf).unwrap();
     if buf.starts_with(format!("{} {} HTTP/1.1\r\n", script.step_method(), script.step_path()).as_bytes()) {
         println!("Handling request with step '{}'", script.step_name());
         let response = script.step_response();
-        stream.write(response.as_bytes()).unwrap();
+        stream.write_all(response.as_bytes()).unwrap();
         stream.flush().unwrap();
         result = script.next_step();
     } else {
-        stream.write(format!("HTTP/1.1 400 Bad Request\r\n\r\nExpected {} {}", script.step_method(), script.step_path()).as_bytes()).unwrap();
+        let msg = format!("Expectd {} {}", script.step_method(), script.step_path());
+        stream.write_all(bad_request(msg.as_str()).as_bytes()).unwrap();
         stream.flush().unwrap();
         result = Left(script.current_step);
     }
-    return result;
+    result
 }

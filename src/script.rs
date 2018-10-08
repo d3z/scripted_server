@@ -26,8 +26,8 @@ impl Step {
             path: parse_str_value(step_definition, "path", ""),
             method: parse_str_value(step_definition, "method", "GET").to_uppercase(),
             code: parse_int_value(step_definition, "code", 200),
-            content: content,
             content_type: parse_str_value(step_definition, "content_type", "text/plain"),
+            content
         }
     }
 }
@@ -67,14 +67,14 @@ impl Script {
     }
 
     pub fn step_method(&self) -> String {
-        format!("{}", self.steps[self.current_step].method)
+        self.steps[self.current_step].method.to_string()
     }
 
     pub fn step_path(&self) -> &String {
         if self.steps[self.current_step].path == "" {
             return &self.path
         }
-        return &self.steps[self.current_step].path
+        &self.steps[self.current_step].path
     }
 
     pub fn step_headers(&self) -> String {
@@ -98,7 +98,7 @@ impl Script {
         } else {
             self.current_step += 1;
         }
-        return Left(self.current_step);
+        Left(self.current_step)
     }
 }
 
@@ -106,14 +106,11 @@ fn get_content_from_file(file_path: &str) -> String {
     let mut contents = String::new();
     let mut script_file = File::open(file_path).expect("Could not open response file");
     script_file.read_to_string(&mut contents).expect("Could not read response file");
-    return contents;
+    contents
 }
 
 fn get_content(content_str: &str) -> String {
-    match Path::new(content_str).exists() {
-        true => get_content_from_file(content_str),
-        _ => String::from(content_str)
-    }
+    if Path::new(content_str).exists() { get_content_from_file(content_str) } else { String::from(content_str) }
 }
 
 fn parse_str_value<'a>(yaml: &'a Yaml, key: &str, default: &'a str) -> String {
@@ -135,7 +132,7 @@ fn parse_step(step_definition: &Yaml) -> Vec<Step> {
     for _ in 0..times {
         steps.push(step.clone());
     }
-    return steps;
+    steps
 }
 
 fn parse_steps(step_definitions: Option<&Vec<Yaml>>) -> Vec<Step> {
@@ -144,12 +141,12 @@ fn parse_steps(step_definitions: Option<&Vec<Yaml>>) -> Vec<Step> {
         Some(step_definitions) => step_definitions.into_iter().for_each(|step_definition| parse_step(step_definition).into_iter().for_each(|step| steps.push(step))),
         None => return steps
     }
-    return steps;
+    steps
 }
 
 pub fn parse_script(script_str: &str) -> Script {
     let script = &YamlLoader::load_from_str(script_str).unwrap()[0];
-    return Script::new(script);
+    Script::new(script)
 }
 
 #[cfg(test)]
