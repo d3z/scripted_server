@@ -1,6 +1,6 @@
+extern crate either;
 extern crate structopt;
 extern crate yaml_rust;
-extern crate either;
 
 use either::*;
 use std::fs::File;
@@ -8,15 +8,15 @@ use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
-use yaml_rust::{YamlLoader, Yaml};
+use yaml_rust::{Yaml, YamlLoader};
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "reqs")]
 struct Opt {
-    #[structopt(name="file", parse(from_os_str))]
+    #[structopt(name = "file", parse(from_os_str))]
     script_file: PathBuf,
-    #[structopt(short="p", long="port", default_value="8000")]
-    port: i32
+    #[structopt(short = "p", long = "port", default_value = "8000")]
+    port: i32,
 }
 
 #[derive(Debug, Clone)]
@@ -26,12 +26,12 @@ struct Step {
     method: String,
     code: i64,
     content: String,
-    content_type: String
+    content_type: String,
 }
 
 impl Step {
     fn new(step_definition: &Yaml) -> Self {
-        let content = get_content(parse_str_value(step_definition, "content", "").as_str()); 
+        let content = get_content(parse_str_value(step_definition, "content", "").as_str());
         Step {
             name: parse_str_value(step_definition, "name", ""),
             path: parse_str_value(step_definition, "path", ""),
@@ -49,7 +49,7 @@ struct Script {
     repeat: bool,
     path: String,
     current_step: usize,
-    steps: Vec<Step>
+    steps: Vec<Step>,
 }
 
 fn msg_for_code<'a>(code: i64) -> &'a str {
@@ -58,7 +58,7 @@ fn msg_for_code<'a>(code: i64) -> &'a str {
         201 => "Created",
         400 => "Bad Request",
         404 => "Not Found",
-        _ => ""
+        _ => "",
     }
 }
 
@@ -69,12 +69,15 @@ impl Script {
             repeat: parse_bool_value(script, "repeat", false),
             path: parse_str_value(script, "path", ""),
             steps: parse_steps(script["steps"].as_vec().unwrap()),
-            current_step: 0
+            current_step: 0,
         }
     }
 
     fn step_name(&self) -> String {
-        format!("{}: {}", self.current_step, self.steps[self.current_step].name)
+        format!(
+            "{}: {}",
+            self.current_step, self.steps[self.current_step].name
+        )
     }
 
     fn step_method(&self) -> String {
@@ -83,14 +86,19 @@ impl Script {
 
     fn step_path(&self) -> &String {
         if self.steps[self.current_step].path == "" {
-            return &self.path
+            return &self.path;
         }
-        return &self.steps[self.current_step].path
+        return &self.steps[self.current_step].path;
     }
 
     fn step_response(&self) -> String {
         let step = &self.steps[self.current_step];
-        return format!("HTTP/1.1 {} {}\r\n\r\n{}", step.code, msg_for_code(step.code), step.content);
+        return format!(
+            "HTTP/1.1 {} {}\r\n\r\n{}",
+            step.code,
+            msg_for_code(step.code),
+            step.content
+        );
     }
 
     fn next_step(&mut self) -> Either<usize, &str> {
@@ -109,14 +117,16 @@ impl Script {
 fn get_content_from_file(file_path: &str) -> String {
     let mut contents = String::new();
     let mut script_file = File::open(file_path).expect("Could not open response file");
-    script_file.read_to_string(&mut contents).expect("Could not read response file");
+    script_file
+        .read_to_string(&mut contents)
+        .expect("Could not read response file");
     return contents;
 }
 
 fn get_content(content_str: &str) -> String {
     match Path::new(content_str).exists() {
         true => get_content_from_file(content_str),
-        _ => String::from(content_str)
+        _ => String::from(content_str),
     }
 }
 
@@ -133,7 +143,10 @@ fn parse_bool_value<'a>(yaml: &'a Yaml, key: &str, default: bool) -> bool {
 }
 
 fn parse_step(step_definition: &Yaml) -> Vec<Step> {
-    let times = match step_definition["times"].as_i64() { Some(times) => times as usize, None => 1 };
+    let times = match step_definition["times"].as_i64() {
+        Some(times) => times as usize,
+        None => 1,
+    };
     let mut steps = Vec::with_capacity(times);
     let step = Step::new(step_definition);
     for _ in 0..times {
@@ -144,7 +157,11 @@ fn parse_step(step_definition: &Yaml) -> Vec<Step> {
 
 fn parse_steps(step_definitions: &Vec<Yaml>) -> Vec<Step> {
     let mut steps = Vec::new();
-    step_definitions.into_iter().for_each(|step_definition| parse_step(step_definition).into_iter().for_each(|step| steps.push(step)));
+    step_definitions.into_iter().for_each(|step_definition| {
+        parse_step(step_definition)
+            .into_iter()
+            .for_each(|step| steps.push(step))
+    });
     return steps;
 }
 
@@ -157,9 +174,14 @@ fn main() {
     let opt = Opt::from_args();
     let mut script_contents = String::new();
     let mut script_file = File::open(opt.script_file).expect("Could not open script file");
-    script_file.read_to_string(&mut script_contents).expect("Could not read script file");
+    script_file
+        .read_to_string(&mut script_contents)
+        .expect("Could not read script file");
     let mut script = parse_script(&script_contents);
-    println!("Listening on port {}, running script '{}'", opt.port, script.name);
+    println!(
+        "Listening on port {}, running script '{}'",
+        opt.port, script.name
+    );
     serve(opt.port, &mut script);
 }
 
@@ -170,7 +192,7 @@ fn serve(port: i32, script: &mut Script) {
         let stream = stream.unwrap();
         match handle_connection(stream, script) {
             Left(_) => continue,
-            Right(msg) => { 
+            Right(msg) => {
                 println!("{}", msg);
                 break;
             }
@@ -182,14 +204,30 @@ fn handle_connection(mut stream: TcpStream, script: &mut Script) -> Either<usize
     let mut buf = [0; 512];
     let result: Either<usize, &str>;
     stream.read(&mut buf).unwrap();
-    if buf.starts_with(format!("{} {} HTTP/1.1\r\n", script.step_method(), script.step_path()).as_bytes()) {
+    if buf.starts_with(
+        format!(
+            "{} {} HTTP/1.1\r\n",
+            script.step_method(),
+            script.step_path()
+        )
+        .as_bytes(),
+    ) {
         println!("Handling request with step '{}'", script.step_name());
         let response = script.step_response();
         stream.write(response.as_bytes()).unwrap();
         stream.flush().unwrap();
         result = script.next_step();
     } else {
-        stream.write(format!("HTTP/1.1 400 Bad Request\r\n\r\nExpected {} {}", script.step_method(), script.step_path()).as_bytes()).unwrap();
+        stream
+            .write(
+                format!(
+                    "HTTP/1.1 400 Bad Request\r\n\r\nExpected {} {}",
+                    script.step_method(),
+                    script.step_path()
+                )
+                .as_bytes(),
+            )
+            .unwrap();
         stream.flush().unwrap();
         result = Left(script.current_step);
     }
